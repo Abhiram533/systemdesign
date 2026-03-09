@@ -1,0 +1,476 @@
+# systemdesignThis is a **very famous cheat sheet used by Google engineers** for quick **back-of-the-envelope calculations** during system design.
+If you **memorize these ~20 numbers**, you can estimate **latency, storage, QPS, bandwidth** in seconds during interviews.
+
+Think of it as **mental math for distributed systems**.
+
+---
+
+# Google System Design Mental Math Cheat Sheet
+
+## 1. Time Units (Always Convert Quickly)
+
+| Unit     | Value       |
+| -------- | ----------- |
+| 1 second | **1000 ms** |
+| 1 ms     | **1000 μs** |
+| 1 μs     | **1000 ns** |
+
+So:
+
+```
+1 second = 1,000,000,000 ns
+```
+
+---
+
+# 2. Latency Numbers (Jeff Dean Numbers)
+
+These help decide **memory vs network vs disk**.
+
+| Operation                | Time       |
+| ------------------------ | ---------- |
+| L1 cache access          | **0.5 ns** |
+| Branch misprediction     | **5 ns**   |
+| L2 cache                 | **7 ns**   |
+| Mutex lock               | **100 ns** |
+| Main memory access       | **100 ns** |
+| Network send (same rack) | **20 μs**  |
+| Datacenter roundtrip     | **0.5 ms** |
+| Disk seek                | **10 ms**  |
+| Read 1MB from disk       | **30 ms**  |
+| Cross continent network  | **150 ms** |
+
+### Important takeaway
+
+```
+Memory access ≈ 100 ns
+Disk seek ≈ 10 ms
+```
+
+That is:
+
+```
+Disk = 100,000× slower than memory
+```
+
+This is why **caching is critical**.
+
+---
+
+# 3. Storage Size Conversions
+
+These help in **storage estimation**.
+
+| Unit | Value          |
+| ---- | -------------- |
+| 1 KB | **10³ bytes**  |
+| 1 MB | **10⁶ bytes**  |
+| 1 GB | **10⁹ bytes**  |
+| 1 TB | **10¹² bytes** |
+
+In system design interviews we usually approximate:
+
+```
+1 KB ≈ 1000 bytes
+1 MB ≈ 1,000,000 bytes
+```
+
+---
+
+# 4. Time Conversions (Used for QPS)
+
+| Time     | Seconds       |
+| -------- | ------------- |
+| 1 minute | **60 sec**    |
+| 1 hour   | **3600 sec**  |
+| 1 day    | **86400 sec** |
+| 1 year   | **~31M sec**  |
+
+So remember:
+
+```
+1 day = 86,400 seconds
+```
+
+This number is used constantly in interviews.
+
+---
+
+# 5. QPS Estimation Shortcut
+
+Instead of dividing every time, remember these approximations:
+
+| Daily Requests | QPS             |
+| -------------- | --------------- |
+| 1M/day         | **~12 QPS**     |
+| 10M/day        | **~120 QPS**    |
+| 100M/day       | **~1200 QPS**   |
+| 1B/day         | **~11,500 QPS** |
+
+Shortcut:
+
+```
+QPS ≈ Requests_per_day / 100,000
+```
+
+---
+
+# 6. Storage Estimation Shortcut
+
+Example:
+
+```
+1M users
+each storing 1KB
+```
+
+```
+Total = 1GB
+```
+
+Useful mental mapping:
+
+| Users | Data per user | Total     |
+| ----- | ------------- | --------- |
+| 1M    | 1KB           | **1GB**   |
+| 10M   | 1KB           | **10GB**  |
+| 100M  | 1KB           | **100GB** |
+
+---
+
+# 7. Network Speed Cheat Sheet
+
+| Network | Speed         |
+| ------- | ------------- |
+| 1 Gbps  | **125 MB/s**  |
+| 10 Gbps | **1.25 GB/s** |
+
+Quick trick:
+
+```
+1 Gbps ≈ 100 MB/s
+```
+
+Used for **bandwidth estimation**.
+
+---
+
+# 8. Disk Throughput
+
+Typical SSD:
+
+```
+500 MB/s sequential read
+```
+
+Typical HDD:
+
+```
+150 MB/s sequential read
+```
+
+Disk seek:
+
+```
+~10 ms
+```
+
+Which means **random disk reads are slow**.
+
+---
+
+# 9. Cache Impact Example
+
+Suppose:
+
+```
+Requests = 100k/sec
+Cache hit rate = 95%
+```
+
+DB traffic:
+
+```
+5% of requests
+```
+
+```
+= 5000 QPS
+```
+
+So cache reduces load **20×**.
+
+---
+
+# 10. Replication Impact
+
+Example:
+
+```
+Storage/day = 5 TB
+Replication = 3
+```
+
+Actual storage:
+
+```
+5 × 3 = 15 TB/day
+```
+
+Always consider this in design.
+
+---
+
+# 11. Peak Traffic Rule
+
+Production systems rarely run on average load.
+
+Rule:
+
+```
+Peak traffic ≈ 3× to 5× average
+```
+
+Example:
+
+```
+Average QPS = 2000
+```
+
+Peak:
+
+```
+6000–10000 QPS
+```
+
+---
+
+# 12. Read vs Write Ratio
+
+Many systems are **read heavy**.
+
+Example:
+
+| System    | Ratio      |
+| --------- | ---------- |
+| Twitter   | **100:1**  |
+| YouTube   | **1000:1** |
+| News Feed | **50:1**   |
+
+Meaning:
+
+```
+Optimize reads aggressively
+```
+
+Use:
+
+* caching
+* CDN
+* precomputation
+
+---
+
+# 13. Image / Video Size Estimation
+
+Common approximations:
+
+| Content           | Size        |
+| ----------------- | ----------- |
+| Profile photo     | **100 KB**  |
+| Image             | **500 KB**  |
+| HD image          | **2 MB**    |
+| 1 minute HD video | **~100 MB** |
+
+Used in:
+
+* Instagram design
+* YouTube design
+
+---
+
+# 14. Queue Throughput
+
+Messages/day:
+
+```
+100M messages
+```
+
+Per second:
+
+```
+100M / 86400
+≈ 1150 msgs/sec
+```
+
+Peak:
+
+```
+≈ 5k msgs/sec
+```
+
+So Kafka cluster sizing becomes easier.
+
+---
+
+# 15. Sharding Estimation
+
+Example:
+
+```
+Users = 500M
+DB shard capacity = 10M users
+```
+
+```
+Required shards = 50
+```
+
+Common strategy:
+
+```
+userId % shardCount
+```
+
+---
+
+# 16. CDN Impact
+
+If CDN hit rate:
+
+```
+90%
+```
+
+Origin server receives only:
+
+```
+10% traffic
+```
+
+Huge cost savings.
+
+---
+
+# 17. Memory vs Disk vs Network
+
+Relative speed:
+
+```
+CPU cache
+↓
+RAM
+↓
+Network
+↓
+Disk
+```
+
+Rule:
+
+```
+Avoid disk in critical path
+```
+
+---
+
+# 18. Fan-out Cost (Feeds)
+
+Example:
+
+```
+User followers = 1M
+New post
+```
+
+Fanout:
+
+```
+1M writes
+```
+
+So systems like Twitter must optimize **fanout strategy**.
+
+---
+
+# 19. Compression Benefit
+
+Example:
+
+```
+Data = 100GB
+Compression = 2×
+```
+
+Now:
+
+```
+Network transfer = 50GB
+```
+
+Huge savings.
+
+---
+
+# 20. Back-of-the-envelope Rule
+
+Always ask:
+
+```
+Is this operation CPU bound?
+Memory bound?
+Network bound?
+Disk bound?
+```
+
+This determines architecture.
+
+---
+
+# Example Interview Use
+
+Suppose interviewer asks:
+
+**Design Instagram**
+
+You quickly say:
+
+```
+Users = 500M
+DAU = 200M
+Requests/day = 2B
+```
+
+```
+QPS = 2B / 86400
+≈ 23k
+```
+
+Peak:
+
+```
+≈ 100k QPS
+```
+
+Now you know system size.
+
+---
+
+# One Important Thing
+
+Strong system designers constantly estimate:
+
+```
+latency
+QPS
+storage
+bandwidth
+```
+
+Without these numbers **system design becomes guesswork**.
+
+---
+
+If you want, I can also show you the **FAANG System Design Answer Framework (the exact 12-step method Google engineers use to answer system design questions)**.
+This framework alone can make your **system design interviews 3× stronger**.
